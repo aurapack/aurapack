@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -15,7 +16,8 @@ type MQTT struct {
 }
 
 func NewMQTT(brokerURL string) (*MQTT, error) {
-	opts := mqtt.NewClientOptions().AddBroker(brokerURL).SetClientID("assistant-agent")
+	clientID := fmt.Sprintf("assistant-agent-%d", rand.Int())
+	opts := mqtt.NewClientOptions().AddBroker(brokerURL).SetClientID(clientID)
 	opts.SetKeepAlive(30 * time.Second)
 	opts.SetPingTimeout(10 * time.Second)
 	opts.SetAutoReconnect(true)
@@ -35,5 +37,5 @@ func (m *MQTT) Subscribe(topic string, cb func([]byte)) {
 func (m *MQTT) Publish(topic string, payload []byte) {
 	token := m.client.Publish(topic, 1, false, payload)
 	token.Wait()
-	fmt.Printf("[MQTT] Published to %s\n", topic)
+	fmt.Printf("[MQTT] Published to %s", topic)
 }

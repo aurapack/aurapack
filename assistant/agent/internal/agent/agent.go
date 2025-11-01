@@ -1,57 +1,76 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 )
 
-// STT converts speech to text
 type STT interface {
 	Listen() (string, error)
 }
 
-// TTS converts text to speech
 type TTS interface {
 	Speak(text string) error
 }
 
-// Agent wires STT, TTS, and MQTT loop.
 type Agent struct {
 	stt  STT
 	tts  TTS
 	mqtt *MQTT
+	cfg  *Config
 }
 
-// New builds an Agent.
 func New() *Agent {
-	m, err := NewMQTT(MQTTBroker)
+	cfg := LoadConfig()
+
+	stt := &WhisperSTT{
+		Bin:       cfg.STT.Bin,
+		Model:     cfg.STT.Model,
+		RecordCmd: cfg.STT.RecordCmd,
+	}
+
+	tts := &PiperTTS{
+		Bin:   cfg.TTS.Bin,
+		Voice: cfg.TTS.Voice,
+	}
+
+	m, err := NewMQTT(cfg.MQTT.Broker)
 	if err != nil {
 		log.Fatalf("[Agent] MQTT connect error: %v", err)
 	}
-	return &Agent{stt: &FakeSTT{}, tts: &FakeTTS{}, mqtt: m}
+
+	return &Agent{stt: stt, tts: tts, mqtt: m, cfg: cfg}
 }
 
-// NewWith lets you inject concrete STT/TTS implementations.
-func NewWith(stt STT, tts TTS, brokerURL string) *Agent {
-	m, err := NewMQTT(brokerURL)
-	if err != nil {
-		log.Fatalf("[Agent] MQTT connect error: %v", err)
-	}
-	return &Agent{stt: stt, tts: tts, mqtt: m}
-}
-
-// Run subscribes to input topic and publishes responses on output topic.
 func (a *Agent) Run() {
 	fmt.Println("[Agent] Connected to MQTT broker at", a.mqtt.brokerURL)
-	a.mqtt.Subscribe(InTopic, a.handleMessage)
+	a.mqtt.Subscribe(a.cfg.MQTT.InTopic, a.handleMessage)
+	go STTLoop(a.stt, a.mqtt, a.cfg.MQTT.InTopic)
 	select {}
 }
 
+type inMsg struct {
+	Text      string `json:"text"`
+	SessionID string `json:"session_id"`
+}
+
 func (a *Agent) handleMessage(payload []byte) {
-	msg := string(payload)
-	fmt.Println("[Agent] Received:", msg)
-	// NOTE: For now, trivial response. Later: intent parsing, LLM, devices.
-	resp := "Echo: " + msg
-	_ = a.tts.Speak(resp)
-	a.mqtt.Publish(OutTopic, []byte(resp))
+	var msg inMsg
+	if err := json.Unmarshal(payload, &msg); err != nil {
+		fmt.Println("[Agent] invalid JSON on input topic:", err)
+		return
+	}
+	if msg.Text == "" {
+		return
+	}
+	fmt.Println("[Agent] Received:", msg.Text)
+	resp := "Echo: " + msg.Text
+	if err := a.tts.Speak(resp); err != nil {
+		fmt.Println("[Agent] TTS error:", err)
+	}
+
+	a.mqtt.Publish(a.cfg.MQTT.OutTopic, []byte(resp))
+	time.Sleep(10 * time.Millisecond)
 }

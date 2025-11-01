@@ -1,12 +1,6 @@
 # Detect distro and install dependencies
 deps:
-	if command -v pacman >/dev/null; then \
-		sudo pacman -S --needed --noconfirm mosquitto alsa-utils just base-devel cmake git; \
-	elif command -v apt-get >/dev/null; then \
-		sudo apt-get update && sudo apt-get install -y mosquitto mosquitto-clients alsa-utils just build-essential cmake git; \
-	else \
-		echo "Unsupported distro: please install mosquitto, alsa-utils, cmake, git manually."; \
-	fi
+	if command -v pacman >/dev/null; then     		sudo pacman -S --needed --noconfirm mosquitto alsa-utils just base-devel cmake git;     	elif command -v apt-get >/dev/null; then     		sudo apt-get update && sudo apt-get install -y mosquitto mosquitto-clients alsa-utils just build-essential cmake git;     	else     		echo "Unsupported distro: please install mosquitto, alsa-utils, cmake, git manually.";     	fi
 
 # Run local MQTT broker (foreground)
 dev-broker:
@@ -22,14 +16,16 @@ test-pub:
 
 # Build the assistant binary (Go)
 build:
-	cd ../go && go mod tidy && go build -o ../bin/assistant
+	cd ../agent && go mod tidy && go build -o ../bin/assistant
+
+# Run assistant with local config (env override)
+dev-run:
+	ASSISTANT_CFG=$(pwd)/../cfg/assistant.toml ../bin/assistant
 
 # Package release tarball (requires bin/, cfg/, ops/, models/)
 package:
-	cd .. && VERSION=$$(date +%Y%m%d%H%M%S) && \
-	tar czf aurapack-assistant_$${VERSION}.tar.gz cfg ops bin models
+	cd .. && VERSION=$$(date +%Y%m%d%H%M%S) &&     	tar czf aurapack-assistant_$${VERSION}.tar.gz cfg ops bin models
 
 # Clean build artifacts
 clean:
-	rm -rf ../bin/assistant ../go/go.sum
-
+	rm -rf ../bin/assistant ../agent/go.sum

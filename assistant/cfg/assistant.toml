@@ -1,0 +1,18 @@
+# Aurapack Assistant runtime configuration
+# Paths target the default install dir under /opt/aurapack/assistant
+[mqtt]
+broker = "tcp://localhost:1883"
+in_topic = "/assistant/input/text"
+out_topic = "/assistant/output/text"
+
+[stt]
+bin = "/opt/aurapack/assistant/bin/whisper"
+model = "/opt/aurapack/assistant/models/ggml-base.en.bin"
+# arecord - 16kHz, mono, 5 seconds -> /tmp/aurapack_in.wav
+record_cmd = ["arecord","-q","-f","S16_LE","-r","16000","-c1","-d","5","/tmp/aurapack_in.wav"]
+
+[tts]
+bin = "/opt/piper/bin/piper"
+voice = "/opt/piper/models/en_US-amy-medium.onnx"
+args = ["--output_file", "/tmp/aurapack_tts.wav"]
+env = { LD_LIBRARY_PATH = "/opt/piper/lib" }
