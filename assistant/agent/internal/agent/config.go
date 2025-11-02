@@ -20,8 +20,10 @@ type STTConfig struct {
 }
 
 type TTSConfig struct {
-	Bin   string `toml:"bin"`
-	Voice string `toml:"voice"`
+	Bin   string            `toml:"bin"`
+	Voice string            `toml:"voice"`
+	Args  []string          `toml:"args"`
+	Env   map[string]string `toml:"env"`
 }
 
 type Config struct {
@@ -58,6 +60,8 @@ func LoadConfig() *Config {
 				TTS: TTSConfig{
 					Bin:   "/opt/aurapack/assistant/bin/piper",
 					Voice: "/opt/aurapack/assistant/models/en_US-amy-medium.onnx",
+					Args:  []string{"--output_file", "/tmp/aurapack_out.wav"},
+					Env:   map[string]string{},
 				},
 			}
 		}

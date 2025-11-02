@@ -34,6 +34,8 @@ func New() *Agent {
 	tts := &PiperTTS{
 		Bin:   cfg.TTS.Bin,
 		Voice: cfg.TTS.Voice,
+		Args:  cfg.TTS.Args,
+		Env:   cfg.TTS.Env,
 	}
 
 	m, err := NewMQTT(cfg.MQTT.Broker)

@@ -27,13 +27,24 @@ func (w *WhisperSTT) Listen() (string, error) {
 		return "", fmt.Errorf("whisper failed: %v", err)
 	}
 
-	lines := strings.Split(out.String(), "")
+	lines := strings.Split(out.String(), "\n")
 	re := regexp.MustCompile(`^\[[^\]]+\]\s*(.*)$`)
+	var buf []string
 	for i := len(lines) - 1; i >= 0; i-- {
-		m := re.FindStringSubmatch(strings.TrimSpace(lines[i]))
-		if len(m) == 2 {
-			return strings.TrimSpace(m[1]), nil
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
 		}
+		if m := re.FindStringSubmatch(line); len(m) == 2 {
+			if text := strings.TrimSpace(m[1]); text != "" {
+				buf = append([]string{text}, buf...)
+			}
+			continue
+		}
+		buf = append([]string{line}, buf...)
+	}
+	if len(buf) > 0 {
+		return strings.Join(buf, " "), nil
 	}
 
 	return strings.TrimSpace(out.String()), nil
